@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications</title>
+  <style>
+        :root {
+            --text-primary: #1a2b3c;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --accent-color: #f97316;
+            --background: #f9fafb;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 24px;
+            background: var(--background);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .badge {
+            margin-left: 8px;
+            padding: 2px 8px;
+            background-color: #fff7ed;
+            color: var(--accent-color);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 6px;
+        }
+
+        .notifications {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .notification {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .notification:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+
+        .notification-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .notification-icon {
+            color: var(--accent-color);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .notification-content {
+            flex-grow: 1;
+            margin-right: 24px;
+        }
+
+        .notification-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: var(--text-primary);
+        }
+
+        .notification-description {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0 0 16px 0;
+            line-height: 1.5;
+        }
+
+        .notification-link {
+            display: inline-flex;
+            align-items: center;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: opacity 0.2s ease;
+        }
+
+        .notification-link:hover {
+            opacity: 0.8;
+        }
+
+        .dismiss-button {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dismiss-button:hover {
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 16px;
+            }
+
+            .notification {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Notifications</h1>
+            <span class="badge" id="notificationCount">3</span>
+        </div>
+        <div class="notifications" id="notificationList">
+            <div class="notification" data-id="newTrials">
+                <button class="dismiss-button" aria-label="Dismiss notification">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="notification-header">
+                    <svg class="notification-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div class="notification-content">
+                        <h2 class="notification-title">Decrease in New Trials</h2>
+                        <p class="notification-description">There's been a substantial decrease in new trials over the past 24 hours.</p>
+                        <a href="new-trials-alert.html" class="notification-link">
+                            Investigate
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px;">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="notification" data-id="conversionRate">
+                <button class="dismiss-button" aria-label="Dismiss notification">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="notification-header">
+                    <svg class="notification-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div class="notification-content">
+                        <h2 class="notification-title">Decrease in Trial-to-Paid Conversion Rate</h2>
+                        <p class="notification-description">The rate at which trial users are converting to paid subscriptions has decreased significantly over the past three days.</p>
+                        <a href="trial-to-paid-conversion-rate-alert.html" class="notification-link">
+                            Investigate
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px;">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="notification" data-id="refundRate">
+                <button class="dismiss-button" aria-label="Dismiss notification">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="notification-header">
+                    <svg class="notification-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <div class="notification-content">
+                        <h2 class="notification-title">Increased Refund Rate</h2>
+                        <p class="notification-description">The rate of refund requests in the past 48 hours is significantly higher than the typical 30-day average.</p>
+                        <a href="refund-rate-alert.html" class="notification-link">
+                            Investigate
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px;">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const notificationList = document.getElementById('notificationList');
+            const notificationCount = document.getElementById('notificationCount');
+
+            notificationList.addEventListener('click', function(e) {
+                if (e.target.closest('.dismiss-button')) {
+                    const notification = e.target.closest('.notification');
+                    notification.remove();
+                    updateNotificationCount();
+                }
+            });
+
+            function updateNotificationCount() {
+                const count = notificationList.children.length;
+                notificationCount.textContent = count;
+                if (count === 0) {
+                    notificationCount.style.display = 'none';
+                } else {
+                    notificationCount.style.display = 'inline-block';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
