@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Trial-to-Paid Conversion Rate Alert</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    :root {
+      --text-primary: #1a2b3c;
+      --text-secondary: #4b5563;
+      --text-tertiary: #6b7280;
+      --text-muted: #9ca3af;
+      --accent-color: #f97316;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f9fafb;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      padding-bottom: 32px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 500;
+      margin: 0;
+      color: var(--text-primary);
+      padding: 24px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .alert-icon {
+      color: var(--accent-color);
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 400px; 
+      margin: 24px 0;
+      position: relative;
+    }
+    .chart-container svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .line {
+      fill: none;
+      stroke-width: 2.8;
+      transition: opacity 0.2s ease;
+    }
+
+    .actual-line {
+      stroke: #f97316;
+    }
+
+    .expected-line {
+      stroke: #22c55e;
+      stroke-dasharray: 5, 5;
+      opacity: 0.7;
+    }
+
+    .line.dimmed {
+      opacity: 0.3;
+    }
+
+    .hover-dot {
+      fill: #f97316;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .hover-dot.expected {
+      fill: #22c55e;
+    }
+
+    .hover-dot.active {
+      opacity: 1;
+    }
+
+    .alert-line {
+      stroke: #ef4444;
+      stroke-dasharray: 5, 5;
+      opacity: 0.5;
+      stroke-width: 2;
+    }
+
+    .alert-label {
+      fill: #ef4444;
+      font-size: 0.875rem;
+      opacity: 0.8;
+    }
+
+    .tooltip {
+      position: absolute;
+      padding: 12px;
+      background: #f9fafb;
+      border: none;
+      border-radius: 6px;
+      pointer-events: none;
+      font-size: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: opacity 0.2s ease;
+    }
+
+    .tooltip-date {
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .tooltip-value {
+      display: block;
+      color: var(--text-tertiary);
+      margin: 4px 0;
+      white-space: nowrap;
+    }
+
+    .actual-value {
+      color: #f97316;
+    }
+
+    .expected-value {
+      color: #22c55e;
+    }
+
+    .grid-horizontal line {
+      stroke: #e5e7eb;
+      opacity: 0.8;
+    }
+
+    .grid-vertical line {
+      stroke: #e5e7eb;
+      stroke-dasharray: 2, 2;
+      opacity: 0;
+    }
+
+    .grid path {
+      stroke-width: 0;
+    }
+
+    .domain {
+      stroke: #e5e7eb;
+      stroke-width: 1;
+    }
+
+    .grid-horizontal line,
+    .grid-vertical line {
+      stroke: #f3f4f6;
+    }
+
+    .tick text {
+      fill: var(--text-muted);
+      font-size: 11px;
+      font-weight: 400;
+    }
+
+    .series-labels {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-top: 20px;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .series-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .series-color {
+      width: 16px;
+      height: 2px;
+    }
+
+    .series-color.expected {
+      border-top: none;
+      background: repeating-linear-gradient(to right,
+          #22c55e,
+          #22c55e 4px,
+          transparent 4px,
+          transparent 8px);
+    }
+
+    .alert-info {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 4px;
+      padding: 10px 20px 20px;
+      margin: 40px 140px 40px 60px;
+    }
+
+    .alert-info h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .alert-info p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    /* Feedback section in alert box */
+    .feedback-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #fed7aa;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .feedback-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .feedback-button {
+      background: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 6px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+
+    .feedback-button:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      width: 400px;
+      max-width: 90vw;
+      transform: translateY(20px);
+      transition: transform 0.2s ease;
+    }
+
+    .modal-overlay.active .modal {
+      transform: translateY(0);
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+    }
+
+    .modal-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .modal-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: background 0.2s ease;
+    }
+
+    .modal-option:hover {
+      background: #f9fafb;
+    }
+
+    .modal-option input[type="radio"] {
+      margin-top: 3px;
+    }
+
+    .modal-option label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .modal-submit {
+      width: 100%;
+      padding: 8px;
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-submit:hover {
+      opacity: 0.9;
+    }
+
+    .causes-section {
+      padding: 0 60px;
+    }
+
+    .causes-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+    }
+
+    .cause-card {
+      background-color: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      margin-right: 80px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      transition: all 0.2s ease-in-out;
+      cursor: pointer;
+    }
+
+    .cause-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+      border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    .cause-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .sparkle-icon {
+      color: var(--accent-color);
+      flex-shrink: 0;
+    }
+
+    .cause-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex-grow: 1;
+    }
+
+    .cause-description {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 0;
+      line-height: 1.5;
+    }
+
+    .cause-details {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      border-top: 1px solid #e5e7eb;
+      background-color: #fff7ed;
+      border-radius: 0 0 16px 16px;
+    }
+
+    .cause-details.expanded {
+      display: block;
+    }
+
+    .cause-details h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 16px 0 8px;
+    }
+
+    .cause-details ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .cause-details li {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+      padding-left: 24px;
+      position: relative;
+    }
+
+    .cause-details li::before {
+      content: "•";
+      position: absolute;
+      left: 8px;
+      color: var(--accent-color);
+      font-size: 20px;
+      line-height: 18px;
+      top: -2px;
+    }
+
+    .chevron-icon {
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .cause-card.expanded .chevron-icon {
+      transform: rotate(90deg);
+    }
+
+    .metric {
+      color: #2563eb;
+      text-decoration: underline;
+      cursor: default;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2 class="card-title">
+      <svg class="alert-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" 
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86
+                 a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      Alert: Decrease in Trial-to-Paid Conversion Rate
+    </h2>
+
+    <div class="chart-container" id="chart"></div>
+
+    <div class="series-labels">
+      <div class="series-label">
+        <div class="series-color" style="background: #f97316"></div>
+        <span>Actual Conversion Rate</span>
+      </div>
+      <div class="series-label">
+        <div class="series-color expected"></div>
+        <span>Expected Conversion Rate</span>
+      </div>
+    </div>
+
+    <div class="alert-info">
+      <h3>Summary</h3>
+      <p>The rate at which trial users are converting to paid subscriptions has decreased significantly over the past three days. Consider investigating further.</p>
+      <div class="feedback-section" id="feedbackSection">
+        <span>Was this alert helpful?</span>
+        <div class="feedback-buttons">
+          <button class="feedback-button" onclick="handleFeedback(true)" title="Yes, this was helpful">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0
+                       2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7
+                       a2 2 0 0 1 2-2h3"/>
+            </svg>
+          </button>
+          <button class="feedback-button" onclick="handleFeedback(false)" title="No, this wasn't helpful">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7
+                       l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 
+                       22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="causes-section">
+      <h3 class="causes-title">Possible Causes</h3>
+      <div class="causes-container">
+        <!-- Cause cards will be dynamically inserted here -->
+      </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div class="modal-overlay" id="feedbackModal">
+      <div class="modal">
+        <h3 class="modal-title">What was unhelpful about this alert?</h3>
+        <div class="modal-options">
+          <div class="modal-option">
+            <input type="radio" id="reason1" name="feedback" value="false_positive">
+            <label for="reason1">This wasn't actually a problem (false positive)</label>
+          </div>
+          <div class="modal-option">
+            <input type="radio" id="reason2" name="feedback" value="too_late">
+            <label for="reason2">Alert came too late to be actionable</label>
+          </div>
+          <div class="modal-option">
+            <input type="radio" id="reason3" name="feedback" value="wrong_cause">
+            <label for="reason3">Suggested causes weren't relevant</label>
+          </div>
+          <div class="modal-option">
+            <input type="radio" id="reason4" name="feedback" value="missing_info">
+            <label for="reason4">Missing important information or context</label>
+          </div>
+          <div class="modal-option">
+            <input type="radio" id="reason5" name="feedback" value="other">
+            <label for="reason5">Other reason</label>
+          </div>
+        </div>
+        <button class="modal-submit" onclick="submitFeedback()">Submit Feedback</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Generate data once
+    function generateData() {
+      const data = [];
+      const baselineHigh = 60; // 60% conversion rate baseline
+      const baselineLow = 15;  // Severe drop to 15% (well below 40% of baseline)
+
+      for (let i = 0; i < 72; i++) { // 3 days worth of hourly data
+        let conversion;
+        let expected;
+        const hour = -72 + i;
+
+        if (hour < -48) {
+          // First day - normal
+          const baseValue = baselineHigh + Math.sin(i * 0.2) * 3;
+          conversion = baseValue + (Math.random() * 2 - 1);
+          expected = baseValue;
+        } else {
+          // Last two days - severe decline
+          const decline = Math.min(1, Math.max(0.4, (hour + 48) / 24));
+          conversion =
+            (baselineHigh * (1 - decline) + baselineLow * decline) +
+            Math.sin(i * 0.2) * 2 +
+            (Math.random() * 2 - 1);
+          expected = baselineHigh + Math.sin(i * 0.2) * 3;
+        }
+
+        data.push({
+          hour: hour,
+          conversion: Math.max(Math.round(conversion * 10) / 10, 0),
+          expected: Math.round(expected * 10) / 10
+        });
+      }
+      return data;
+    }
+    const data = generateData();
+
+    // Draw chart logic
+    function drawChart() {
+      // Remove any existing SVG
+      d3.select('#chart').selectAll('*').remove();
+
+      // Calc new dims
+      const margin = { top: 20, right: 140, bottom: 40, left: 60 };
+      const container = document.querySelector('.chart-container');
+      const width = container.clientWidth - margin.left - margin.right;
+      const height = container.clientHeight - margin.top - margin.bottom;
+
+      // Create main SVG
+      const svg = d3.select('#chart')
+        .append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+      // X & Y scales
+      const x = d3.scaleLinear()
+        .domain([-71, -1])
+        .range([0, width]);
+
+      const y = d3.scaleLinear()
+        .domain([0, 70])
+        .range([height, 0]);
+
+      // Dynamically compute # of ticks for X axis based on width
+      const maxXTicks = Math.max(2, Math.floor(width / 70)); 
+      // e.g., around 70px per tick label. Adjust as you see fit.
+
+      // Grid lines (horizontal)
+      const gridGroup = svg.append('g').attr('class', 'grid-group');
+      gridGroup.append('g')
+        .attr('class', 'grid-horizontal')
+        .call(d3.axisLeft(y)
+          .tickSize(-width)
+          .tickFormat('')
+          .ticks(7)
+        );
+
+      // X Axis
+      svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x)
+          .ticks(maxXTicks)  // Use dynamic number of ticks
+          .tickSize(0)
+          .tickFormat(hour => {
+            const now = new Date();
+            const date = new Date(now.getTime() + (hour * 60 * 60 * 1000));
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+
+            if (date.getHours() === 0 || hour === -71) {
+              const day = date.getDate();
+              const month = date.toLocaleString('default', { month: 'short' });
+              return `${day}. ${month}\n${hours}:00 ${ampm}`;
+            }
+            return `${hours}:00 ${ampm}`;
+          })
+        )
+        .selectAll("text")
+        .style("text-anchor", "middle");
+
+      // Y Axis
+      svg.append('g')
+        .call(d3.axisLeft(y)
+          .ticks(7)
+          .tickFormat(d => `${d}%`)
+          .tickSize(0)
+        );
+
+      // Lines
+      const actualLine = d3.line()
+        .x(d => x(d.hour))
+        .y(d => y(d.conversion));
+
+      const expectedLine = d3.line()
+        .x(d => x(d.hour))
+        .y(d => y(d.expected));
+
+      // Clipping
+      svg.append('defs')
+        .append('clipPath')
+        .attr('id', 'clip')
+        .append('rect')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('x', 0)
+        .attr('y', 0);
+
+      const chartArea = svg.append('g')
+        .attr('clip-path', 'url(#clip)');
+
+      chartArea.append('path')
+        .datum(data)
+        .attr('class', 'line expected-line')
+        .attr('d', expectedLine);
+
+      chartArea.append('path')
+        .datum(data)
+        .attr('class', 'line actual-line')
+        .attr('d', actualLine);
+
+      // Hover dots
+      const actualDot = chartArea.append('circle')
+        .attr('class', 'hover-dot')
+        .attr('r', 5);
+
+      const expectedDot = chartArea.append('circle')
+        .attr('class', 'hover-dot expected')
+        .attr('r', 5);
+
+      // Alert threshold
+      chartArea.append('line')
+        .attr('class', 'alert-line')
+        .attr('x1', 0)
+        .attr('x2', width)
+        .attr('y1', y(24)) 
+        .attr('y2', y(24));
+
+      svg.append('text')
+        .attr('class', 'alert-label')
+        .attr('x', width + 5)
+        .attr('y', y(24))
+        .attr('dy', '0.32em')
+        .text('Alert Threshold');
+
+      // Tooltip
+      const tooltip = d3.select('body')
+        .append('div')
+        .attr('class', 'tooltip')
+        .style('opacity', 0);
+
+      const bisect = d3.bisector(d => d.hour).left;
+      const lines = svg.selectAll('.line');
+
+      // Mouse area
+      svg.append('rect')
+        .attr('width', width)
+        .attr('height', height)
+        .style('fill', 'none')
+        .style('pointer-events', 'all')
+        .on('mousemove', function(event) {
+          const x0 = x.invert(d3.pointer(event, this)[0]);
+          const i = bisect(data, x0, 1);
+          const d0 = data[i - 1];
+          const d1 = data[i];
+          const d = x0 - d0.hour > d1.hour - x0 ? d1 : d0;
+
+          actualDot
+            .attr('cx', x(d.hour))
+            .attr('cy', y(d.conversion))
+            .classed('active', true);
+
+          expectedDot
+            .attr('cx', x(d.hour))
+            .attr('cy', y(d.expected))
+            .classed('active', true);
+
+          lines.classed('dimmed', true);
+
+          tooltip.transition()
+            .duration(50)
+            .style('opacity', 0.9);
+
+          const currentDate = new Date();
+          const hourOffset = -d.hour;
+          const tooltipDate = new Date(currentDate.getTime() - (hourOffset * 60 * 60 * 1000));
+
+          const formatter = new Intl.DateTimeFormat('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric'
+          });
+          const formattedDate = formatter.formatToParts(tooltipDate)
+            .reduce((acc, part) => {
+              if (part.type === 'literal' && part.value === ' at ') {
+                return acc;
+              }
+              acc[part.type] = part.value;
+              return acc;
+            }, {});
+          const timeStr = formattedDate.hour + formattedDate.dayPeriod.toLowerCase();
+
+          tooltip.html(`
+            <div class="tooltip-date">
+              ${formattedDate.weekday},<br/>
+              ${formattedDate.month} ${formattedDate.day}, ${formattedDate.year}<br/>
+              ${timeStr}
+            </div>
+            <div class="tooltip-value actual-value">
+              Actual Conversion Rate: ${d.conversion}%
+            </div>
+            <div class="tooltip-value expected-value">
+              Expected Conversion Rate: ${d.expected}%
+            </div>
+          `)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 28) + 'px');
+        })
+        .on('mouseout', function() {
+          actualDot.classed('active', false);
+          expectedDot.classed('active', false);
+          lines.classed('dimmed', false);
+
+          tooltip.transition()
+            .duration(500)
+            .style('opacity', 0);
+        });
+    }
+
+    // Draw once on page load & on resize
+    drawChart();
+    window.addEventListener('resize', drawChart);
+
+    // Feedback handling
+    function handleFeedback(isHelpful) {
+      if (isHelpful) {
+        const feedbackSection = document.getElementById('feedbackSection');
+        feedbackSection.innerHTML = '<span><i>Thank you for your feedback. This helps us improve.</i></span>';
+      } else {
+        const modal = document.getElementById('feedbackModal');
+        modal.classList.add('active');
+      }
+    }
+
+    function submitFeedback() {
+      const selectedReason = document.querySelector('input[name="feedback"]:checked');
+      if (selectedReason) {
+        const modal = document.getElementById('feedbackModal');
+        modal.classList.remove('active');
+        const feedbackSection = document.getElementById('feedbackSection');
+        feedbackSection.innerHTML = '<span><i>Thank you for your feedback. This helps us improve.</i></span>';
+      }
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('feedbackModal').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('active');
+      }
+    });
+
+    // Possible Causes
+    const causes = [
+      {
+        title: "Price Point Misalignment",
+        description: "Recent price change too high for value offered",
+        details: {
+          lookFor: "Trial users citing price in <span class=\"metric\">Cancellation Reasons</span>",
+          verifyBy: "Comparing conversion by price point and user segment",
+          consider: "Testing previous price points or adjust tier structure"
+        }
+      },
+      {
+        title: "Premium Features Broken",
+        description: "Key features not working during trial period",
+        details: {
+          lookFor: "Drop in feature usage metrics during trials",
+          verifyBy: "Checking error rates in premium feature logs",
+          consider: "Testing all premium features in trial state"
+        }
+      }
+    ];
+    const causesContainer = document.querySelector('.causes-container');
+    causes.forEach(cause => {
+      const card = document.createElement('div');
+      card.className = 'cause-card';
+      card.innerHTML = `
+        <div class="cause-header">
+          <svg class="sparkle-icon" width="24" height="24" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round">
+            <path d="M12 3L14.5 8.5L20 11L14.5 13.5L12 19L9.5 13.5L4 11
+                     L9.5 8.5L12 3Z"/>
+          </svg>
+          <div class="cause-title">${cause.title}</div>
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </div>
+        <div class="cause-description">${cause.description}</div>
+        <div class="cause-details">
+          <h4>Look for</h4>
+          <ul><li>${cause.details.lookFor}</li></ul>
+          <h4>Verify by</h4>
+          <ul><li>${cause.details.verifyBy}</li></ul>
+          <h4>Consider</h4>
+          <ul><li>${cause.details.consider}</li></ul>
+        </div>
+      `;
+      card.addEventListener('click', () => {
+        const wasExpanded = card.classList.contains('expanded');
+        document.querySelectorAll('.cause-card').forEach(c => {
+          c.classList.remove('expanded');
+          c.querySelector('.cause-details').classList.remove('expanded');
+        });
+        if (!wasExpanded) {
+          card.classList.add('expanded');
+          card.querySelector('.cause-details').classList.add('expanded');
+        }
+      });
+      causesContainer.appendChild(card);
+    });
+  </script>
+</body>
+</html>
